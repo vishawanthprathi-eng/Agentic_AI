@@ -13,6 +13,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize and verify authentication session on mount
   useEffect(() => {
     const initializeAuth = async () => {
       const savedToken = localStorage.getItem('agenticsync_token');
@@ -20,19 +21,27 @@ export default function App() {
 
       if (savedToken && savedUser) {
         try {
-          setUser(JSON.parse(savedUser));
-          // Verify token validity with backend
+          // Immediately set optimistic user state from localStorage
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+
+          // Validate token with backend asynchronously
           const res = await authAPI.getMe();
           if (res.data.success && res.data.user) {
             setUser(res.data.user);
             localStorage.setItem('agenticsync_user', JSON.stringify(res.data.user));
           }
         } catch (err) {
-          console.warn('Session expired or invalid:', err.message);
-          localStorage.removeItem('agenticsync_token');
-          localStorage.removeItem('agenticsync_user');
-          setUser(null);
+          console.warn('Session verification notice:', err.message);
+          // If token verification explicitly returned 401 or failed, clean up
+          if (err.response && err.response.status === 401) {
+            localStorage.removeItem('agenticsync_token');
+            localStorage.removeItem('agenticsync_user');
+            setUser(null);
+          }
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };
@@ -54,8 +63,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-          <span className="text-xs text-slate-400 font-mono">Initializing AgenticSync Hub...</span>
+          <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+          <span className="text-xs text-slate-400 font-mono tracking-wider uppercase">
+            Loading AgenticSync Hub...
+          </span>
         </div>
       </div>
     );
@@ -63,7 +74,7 @@ export default function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
         <Navbar user={user} onLogout={handleLogout} />
 
         <main className="flex-1">
@@ -84,7 +95,7 @@ export default function App() {
               }
             />
 
-            {/* Auth Routes */}
+            {/* Public Authentication Routes */}
             <Route
               path="/login"
               element={
@@ -142,13 +153,15 @@ export default function App() {
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>AgenticSync © 2026 — Theme: Agentic AI & Intelligent Systems</span>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              Gemini AI Autonomous Code Verification Engine Online
+        <footer className="border-t border-slate-800/80 bg-[#080B11] py-6 text-center text-xs text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="font-medium text-slate-400">
+              AgenticSync © 2026 — Theme: Agentic AI & Intelligent Systems
             </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-slate-400">Google Gemini Autonomous Verification Agent Active</span>
+            </div>
           </div>
         </footer>
       </div>

@@ -1,51 +1,61 @@
 import axios from 'axios';
 
-// Dynamic API Base URL configured for production (Vercel/Render) and local dev
-const rawApiUrl = import.meta.env.VITE_API_URL || '/api';
-const API_BASE = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
+// Normalize API Base URL (handles relative path, full URL, trailing slashes)
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl || envUrl.trim() === '') {
+    return '/api';
+  }
+  const cleanUrl = envUrl.trim().replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+};
 
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 30000
 });
 
-// Request Interceptor: Attach token if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('agenticsync_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Request Interceptor: Inject JWT token from localStorage
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('agenticsync_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
+);
 
-// Response Interceptor: Handle auth expirations
+// Response Interceptor: Intercept 401 Unauthorized and clear expired sessions
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Clear token if expired or invalid
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/register') {
         localStorage.removeItem('agenticsync_token');
         localStorage.removeItem('agenticsync_user');
-        window.location.href = '/login';
+        window.location.href = `/login?expired=true&redirect=${encodeURIComponent(currentPath)}`;
       }
     }
     return Promise.reject(error);
   }
 );
 
-// Auth Services
+// Authentication API Services
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me')
 };
 
-// Code Verification Services
+// Code Verification API Services
 export const codeAPI = {
   uploadCode: (codeData) => api.post('/code/upload', codeData),
   getMyUploads: () => api.get('/code/my-uploads'),
@@ -53,7 +63,7 @@ export const codeAPI = {
   reverifyCode: (id) => api.post(`/code/${id}/reverify`)
 };
 
-// Admin Services
+// Admin Dashboard & Management API Services
 export const adminAPI = {
   getMetrics: () => api.get('/admin/metrics'),
   getUsers: () => api.get('/admin/users'),
