@@ -21,9 +21,10 @@ const generateToken = (user) => {
 router.post('/register', validateBody(registerSchema), async (req, res) => {
   try {
     const { email, password, role } = req.validatedBody;
+    const cleanEmail = email.trim().toLowerCase();
 
     // Check if user already exists
-    const existing = await db.users.findByEmail(email);
+    const existing = await db.users.findByEmail(cleanEmail);
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -37,7 +38,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
 
     // Create user
     const newUser = await db.users.create({
-      email,
+      email: cleanEmail,
       password_hash,
       role: role || 'member'
     });
@@ -75,8 +76,9 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
 router.post('/login', validateBody(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.validatedBody;
+    const cleanEmail = email.trim().toLowerCase();
 
-    const user = await db.users.findByEmail(email);
+    const user = await db.users.findByEmail(cleanEmail);
     if (!user) {
       return res.status(401).json({
         success: false,

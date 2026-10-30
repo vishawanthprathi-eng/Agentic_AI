@@ -63,6 +63,55 @@ export const codeAPI = {
   reverifyCode: (id) => api.post(`/code/${id}/reverify`)
 };
 
+// Helper to extract clear, accurate error messages from any API response or network error
+export const getApiErrorMessage = (error, defaultFallback = 'An unexpected error occurred') => {
+  if (!error) return defaultFallback;
+
+  // 1. Backend returned an HTTP response with error details
+  if (error.response) {
+    const data = error.response.data;
+
+    // Handle Zod validation errors array
+    if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+      return data.errors.map(e => e.message || e.field).join('. ');
+    }
+
+    // Handle specific backend error message
+    if (data?.message) {
+      if (data.error && data.error !== data.message) {
+        return `${data.message} (${data.error})`;
+      }
+      return data.message;
+    }
+
+    if (error.response.status === 409) {
+      return 'A user with this email address already exists. Please sign in or use a different email.';
+    }
+
+    if (error.response.status === 401) {
+      return 'Invalid email or password. Please check your credentials.';
+    }
+
+    if (error.response.status === 403) {
+      return 'Access forbidden: You do not have permission for this action.';
+    }
+
+    if (error.response.status === 404) {
+      return 'The requested API endpoint was not found on the server.';
+    }
+
+    return `Server responded with error (HTTP ${error.response.status})`;
+  }
+
+  // 2. Network error / Backend unreachable / CORS blocked
+  if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+    const targetUrl = api.defaults.baseURL || '/api';
+    return `Cannot connect to backend server (${targetUrl}). If deploying on Render, the free tier may take ~45 seconds to spin up. Please ensure your backend service is running.`;
+  }
+
+  return error.message || defaultFallback;
+};
+
 // Admin Dashboard & Management API Services
 export const adminAPI = {
   getMetrics: () => api.get('/admin/metrics'),

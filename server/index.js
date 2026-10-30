@@ -12,30 +12,36 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Strict CORS Configuration for Render / Production Deployment
+// Strict & Resilient CORS Configuration for Production (Vercel/Render) and Local Dev
 const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(',').map(u => u.trim())
+  ? process.env.CLIENT_URL.split(',').map(u => u.trim().replace(/\/+$/, ''))
   : ['http://localhost:3000', 'http://localhost:5173'];
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // Allow mobile apps, curl, server-to-server, health checks
+  if (process.env.NODE_ENV !== 'production') return true;
+  if (allowedOrigins.includes('*')) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app')) return true; // Allow any Vercel deployment/preview
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
+  return false;
+};
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow non-browser requests (health checks, server-to-server, curl)
-    if (!origin) return callback(null, true);
-    // Allow configured origins, all origins in dev, or any *.vercel.app domain
-    if (
-      process.env.NODE_ENV !== 'production' ||
-      allowedOrigins.includes('*') ||
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app')
-    ) {
-      return callback(null, true);
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
     }
-    return callback(new Error(`CORS policy does not allow access from origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Explicitly handle all preflight OPTIONS requests cleanly
+app.options('*', cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

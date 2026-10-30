@@ -4,7 +4,7 @@ import {
   Cpu, Lock, Mail, ArrowRight, AlertCircle, Shield, 
   User, Eye, EyeOff, Sparkles, CheckCircle2 
 } from 'lucide-react';
-import { authAPI } from '../services/api';
+import { authAPI, getApiErrorMessage } from '../services/api';
 
 export default function Register({ onLoginSuccess }) {
   const navigate = useNavigate();
@@ -61,7 +61,7 @@ export default function Register({ onLoginSuccess }) {
         navigate('/member-dashboard', { replace: true });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Registration failed. A user with this email may already exist.';
+      const msg = getApiErrorMessage(err, 'Registration could not be completed.');
       setError(msg);
     } finally {
       setLoading(false);

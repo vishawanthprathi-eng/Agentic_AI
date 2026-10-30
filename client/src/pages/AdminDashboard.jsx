@@ -4,7 +4,7 @@ import {
   AlertTriangle, Clock, Activity, RefreshCw, UserPlus, Eye, 
   Search, ArrowUpRight, BarChart3, FileCode, Check
 } from 'lucide-react';
-import { adminAPI } from '../services/api';
+import { adminAPI, getApiErrorMessage } from '../services/api';
 import { StatusDistributionChart, MemberContributionChart } from '../components/ActivityChart';
 import CodeModal from '../components/CodeModal';
 
@@ -85,7 +85,7 @@ export default function AdminDashboard({ user }) {
         setModalSuccess('');
       }, 1500);
     } catch (err) {
-      setModalError(err.response?.data?.message || 'Failed to create user');
+      setModalError(getApiErrorMessage(err, 'Failed to create user'));
     } finally {
       setCreatingUser(false);
     }

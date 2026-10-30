@@ -4,7 +4,7 @@ import {
   Cpu, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, 
   AlertCircle, Eye, EyeOff, Sparkles, CheckCircle2 
 } from 'lucide-react';
-import { authAPI } from '../services/api';
+import { authAPI, getApiErrorMessage } from '../services/api';
 
 export default function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ export default function Login({ onLoginSuccess }) {
       const destination = location.state?.from?.pathname || (user.role === 'admin' ? '/admin-dashboard' : '/member-dashboard');
       navigate(destination, { replace: true });
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid email or password. Please verify your credentials.';
+      const msg = getApiErrorMessage(err, 'Invalid email or password. Please verify your credentials.');
       setError(msg);
     } finally {
       setLoading(false);
